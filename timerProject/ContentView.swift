@@ -61,11 +61,12 @@ struct AlwaysOnTopView: NSViewRepresentable
 struct ContentView: View
 {
     @State private var timerPlaying = false
-    @State private var timerTimeS = 0
+    @State private var timerTimeMS = 0
+    @State private var RingTimeMS = 0
     @State private var isOnTop = true
     @State var nowTime = Date.now
     
-    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    let timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
 
 #if DEBUG
     @State var debugIndex = 0
@@ -79,6 +80,7 @@ struct ContentView: View
             Image(systemName: "watchface.applewatch.case")
                 .resizable()
                 .frame(width: 170.0, height: 200.0)
+                .foregroundStyle(Color.black)
             
             //시계 안쪽 이미지
             RoundedRectangle(cornerRadius: 25)
@@ -91,15 +93,27 @@ struct ContentView: View
                 .offset(x:-7, y:-68)
                 .foregroundStyle(Color.white)
             
-            //타이머 링 이미지
+            //타이머 링 비활성 이미지
             Circle()
                 .stroke(style: StrokeStyle(lineWidth: 8, dash:[CGFloat(2), CGFloat(5)]))
+                .rotationEffect(.degrees(-90))
+                .frame(width: 100.0, height: 100.0)
+                .offset(x:-7, y:-2)
+                .foregroundStyle(Color.gray)
+            
+            //타이머 링 활성 이미지
+            Circle()
+                .trim(from: 0, to: CGFloat(timerTimeMS) / CGFloat(RingTimeMS))
+                .stroke(style: StrokeStyle(lineWidth: 8, dash:[CGFloat(2), CGFloat(5)]))
+                .rotationEffect(.degrees(-90))
                 .frame(width: 100.0, height: 100.0)
                 .offset(x:-7, y:-2)
                 .foregroundStyle(Color.orange)
+                .animation(.easeInOut(duration: 0.1), value: timerTimeMS)
+            
             
             //타이머 시간
-            Text("\(String(format: "%02d", timerTimeS / 60)):\(String(format: "%02d", timerTimeS % 60))")
+            Text("\(String(format: "%02d", timerTimeMS / 600)):\(String(format: "%02d", (timerTimeMS / 10) % 60))")
                 .offset(x:-7, y:-2)
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(timerPlaying ? Color.white : Color.gray)
@@ -107,6 +121,7 @@ struct ContentView: View
             //시작&일시정지 버튼
             Button()
             {
+                RingTimeMS = timerTimeMS
                 timerPlaying.toggle()
 #if DEBUG
                 debugIndex+=1
@@ -123,10 +138,10 @@ struct ContentView: View
             }
             .buttonStyle(.plain)
             
-            //타이머 시간 변경 버튼
+            //타이머 시간 증가 버튼
             Button()
             {
-                timerTimeS = timerTimeS + 5
+                timerTimeMS = timerTimeMS + 50
 #if DEBUG
                 debugIndex+=1
                 print("[D]plus \(debugIndex)")
@@ -142,9 +157,21 @@ struct ContentView: View
             }
             .buttonStyle(.plain)
             
+            //타이머 시간 감소 버튼
             Button()
             {
-                timerTimeS = timerTimeS - 5
+                if(timerTimeMS >= 5)
+                {
+                    timerTimeMS = timerTimeMS - 50
+                }
+                else if((timerTimeMS >= 0) && (timerTimeMS < 5))
+                {
+                    timerTimeMS = 0
+                }
+                else
+                {
+                    timerTimeMS = 0
+                }
 #if DEBUG
                 debugIndex+=1
                 print("[D]minus \(debugIndex)")
@@ -162,18 +189,19 @@ struct ContentView: View
         }
         .frame(width: 200, height: 200)
         .padding()
-        .onChange(of: timerPlaying) {
+        .onChange(of: timerPlaying)
+        {
             isOnTop = timerPlaying
         }
         .background(AlwaysOnTopView(window: NSApplication.shared.windows.first!, isAlwaysOnTop: isOnTop))
         .onReceive(timer)
         {
             _ in
-            if(timerPlaying && timerTimeS > 0)
+            if(timerPlaying && timerTimeMS > 0)
             {
-                timerTimeS = timerTimeS - 1
+                timerTimeMS = timerTimeMS - 1
                 
-                if(timerTimeS <= 5)
+                if(((timerTimeMS / 10) <= 5) && ((timerTimeMS % 10) == 0))
                 {
                     NSSound.beep()
                 }
@@ -185,6 +213,7 @@ struct ContentView: View
             else
             {
                 timerPlaying = false
+                RingTimeMS = 0
             }
         }
     }
