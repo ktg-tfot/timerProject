@@ -85,7 +85,7 @@ struct ContentView: View
             //시계 안쪽 이미지
             RoundedRectangle(cornerRadius: 25)
                 .frame(width: 120.0, height: 156.0)
-                .offset(x:-7, y:-2) //-7, -2 (ofset 기준)시계 안쪽의 중심.
+                .offset(x:-7, y:-2) //-7, -2 (ofset 기준)시계 안쪽의 중심
                 .foregroundStyle(.black)
             
             //현재 시간
